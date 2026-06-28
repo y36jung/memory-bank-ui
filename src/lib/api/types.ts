@@ -41,6 +41,7 @@ export interface ChatSource {
   documentId: string;
   documentName: string;
   score?: number;
+  pageNumber?: number | null;
 }
 
 export type ChatStreamEvent =
