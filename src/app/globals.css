@@ -1,26 +1,59 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plus-jakarta-sans);
+
+  --color-teal: #0F6E56;
+  --color-teal-dark: #085041;
+  --color-teal-deeper: #04342C;
+  --color-teal-mid: #1D9E75;
+  --color-teal-light: #E1F5EE;
+  --color-teal-accent: #9FE1CB;
+
+  --color-bg: #F8F7F4;
+  --color-surface: #FFFFFF;
+  --color-secondary: #F3F2EF;
+  --color-tertiary: #ECEAE3;
+  --color-border: #E5E3DC;
+  --color-muted: #D0CEC6;
+
+  --color-text: #1A1915;
+  --color-text-mid: #5C5B57;
+  --color-text-light: #9B9892;
+
+  --color-amber-bg: #FAEEDA;
+  --color-amber-text: #633806;
+
+  --color-pdf: #993C1D;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes thinking-dot {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-thinking-dot {
+  animation: thinking-dot 1.2s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.17s ease-out both;
 }
