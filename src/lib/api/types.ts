@@ -48,3 +48,17 @@ export type ChatStreamEvent =
   | { type: 'delta'; content: string }
   | { type: 'done'; messageId: string; sources: ChatSource[] }
   | { type: 'error'; message: string };
+
+export interface User {
+  id: string;
+  email: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+}
+
+export interface RefreshResponse {
+  accessToken: string;
+}
