@@ -14,17 +14,12 @@ import {
   IconFile,
 } from '@tabler/icons-react';
 import type { Document as Doc } from '@/lib/api/types';
+import { getDocumentFile } from '@/lib/api/documents';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
 ).toString();
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
-
-function fileUrl(documentId: string) {
-  return `${API_BASE}/api/documents/${documentId}/file`;
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -121,15 +116,30 @@ function PdfViewer({ documentId, targetPage }: { documentId: string; targetPage?
   const [numPages, setNumPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(600);
 
   useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
     setNumPages(0);
     setLoading(true);
     setError(null);
+    setBlobUrl(null);
     pageRefs.current = [];
+    getDocumentFile(documentId)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      })
+      .catch((e: Error) => { if (!cancelled) { setError(e.message); setLoading(false); } });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [documentId]);
 
   useEffect(() => {
@@ -151,26 +161,28 @@ function PdfViewer({ documentId, targetPage }: { documentId: string; targetPage?
     <div ref={containerRef} className="w-full">
       {loading && <LoadingSkeleton />}
       {error && <ErrorState message={error} />}
-      <Document
-        file={fileUrl(documentId)}
-        onLoadSuccess={({ numPages: n }) => { setNumPages(n); setLoading(false); }}
-        onLoadError={(e) => { setError(e.message); setLoading(false); }}
-      >
-        {Array.from({ length: numPages }, (_, i) => (
-          <div key={i} ref={(el) => { pageRefs.current[i] = el; }}>
-            <div
-              className="text-center text-[11px] py-1.5"
-              style={{ color: 'var(--color-text-light)' }}
-            >
-              Page {i + 1} of {numPages}
+      {blobUrl && (
+        <Document
+          file={blobUrl}
+          onLoadSuccess={({ numPages: n }) => { setNumPages(n); setLoading(false); }}
+          onLoadError={(e) => { setError(e.message); setLoading(false); }}
+        >
+          {Array.from({ length: numPages }, (_, i) => (
+            <div key={i} ref={(el) => { pageRefs.current[i] = el; }}>
+              <div
+                className="text-center text-[11px] py-1.5"
+                style={{ color: 'var(--color-text-light)' }}
+              >
+                Page {i + 1} of {numPages}
+              </div>
+              <Page
+                pageNumber={i + 1}
+                width={containerWidth || undefined}
+              />
             </div>
-            <Page
-              pageNumber={i + 1}
-              width={containerWidth || undefined}
-            />
-          </div>
-        ))}
-      </Document>
+          ))}
+        </Document>
+      )}
     </div>
   );
 }
@@ -181,17 +193,16 @@ function MarkdownViewer({ documentId }: { documentId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setContent(null);
     setLoading(true);
     setError(null);
-    fetch(fileUrl(documentId))
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.text();
-      })
-      .then(setContent)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+    getDocumentFile(documentId)
+      .then((blob) => blob.text())
+      .then((text) => { if (!cancelled) setContent(text); })
+      .catch((e: Error) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [documentId]);
 
   if (loading) return <LoadingSkeleton />;
@@ -269,24 +280,24 @@ function CsvViewer({ documentId }: { documentId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setHeaders([]);
     setRows([]);
     setLoading(true);
     setError(null);
-    fetch(fileUrl(documentId))
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.text();
-      })
+    getDocumentFile(documentId)
+      .then((blob) => blob.text())
       .then((text) => {
+        if (cancelled) return;
         const result = Papa.parse<string[]>(text, { skipEmptyLines: true });
         if (result.data.length > 0) {
           setHeaders(result.data[0]);
           setRows(result.data.slice(1));
         }
       })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e: Error) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [documentId]);
 
   if (loading) return <LoadingSkeleton />;

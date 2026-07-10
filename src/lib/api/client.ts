@@ -42,6 +42,26 @@ export function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return doFetch<T>(path, init, false);
 }
 
+async function doFetchBlob(path: string, init: RequestInit | undefined, retried: boolean): Promise<Blob> {
+  const res = await fetch(`${BASE}${path}`, withAuth(init));
+
+  if (res.status === 401 && !retried && getAccessToken() !== null) {
+    const newToken = await refreshAccessToken();
+    if (newToken) return doFetchBlob(path, init, true);
+    throw new ApiError('Session expired. Please sign in again.', 'UNAUTHORIZED', 401);
+  }
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => null);
+    throw new ApiError(json?.error?.message ?? `HTTP ${res.status}`, json?.error?.code ?? null, res.status);
+  }
+  return res.blob();
+}
+
+export function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
+  return doFetchBlob(path, init, false);
+}
+
 export function apiStreamUrl(path: string): string {
   return `${BASE}${path}`;
 }
