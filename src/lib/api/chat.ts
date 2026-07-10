@@ -1,4 +1,5 @@
 import { apiFetch, apiStreamUrl } from './client';
+import { getAccessToken, refreshAccessToken } from './auth-store';
 import type { ChatSession, ChatStreamEvent } from './types';
 
 export async function listChatSessions(search?: string): Promise<ChatSession[]> {
@@ -20,12 +21,26 @@ export async function streamChatMessage(
   onEvent: (event: ChatStreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await fetch(apiStreamUrl(`/chat/sessions/${sessionId}/messages`), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
-    signal,
-  });
+  const url = apiStreamUrl(`/chat/sessions/${sessionId}/messages`);
+
+  function doStreamFetch() {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = getAccessToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message }),
+      signal,
+    });
+  }
+
+  let res = await doStreamFetch();
+
+  if (res.status === 401 && getAccessToken() !== null) {
+    const newToken = await refreshAccessToken();
+    if (newToken) res = await doStreamFetch();
+  }
 
   if (!res.ok) {
     const json = await res.json().catch(() => null);

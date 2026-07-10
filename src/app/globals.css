@@ -57,3 +57,23 @@ body {
 .animate-fade-in-up {
   animation: fade-in-up 0.17s ease-out both;
 }
+
+@keyframes auth-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes auth-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+.animate-auth-spin {
+  animation: auth-spin 0.7s linear infinite;
+}
+
+.animate-auth-shake {
+  animation: auth-shake 0.35s;
+}

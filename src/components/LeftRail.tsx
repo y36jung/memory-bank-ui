@@ -1,8 +1,11 @@
 'use client';
 
 import { IconDatabase, IconBooks, IconSettings, IconUser } from '@tabler/icons-react';
+import { useLogout } from '@/hooks';
 
 export function LeftRail() {
+  const logout = useLogout();
+
   return (
     <div className="flex flex-col items-center w-14 shrink-0 bg-surface border-r border-border py-3 gap-1">
       <div className="flex items-center justify-center w-8 h-8 rounded-lg mb-2" style={{ backgroundColor: 'var(--color-teal)' }}>
@@ -28,8 +31,10 @@ export function LeftRail() {
           <IconSettings size={18} />
         </button>
         <button
-          title="Account"
-          className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-secondary"
+          title="Sign out"
+          disabled={logout.isPending}
+          onClick={() => logout.mutate()}
+          className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-secondary disabled:opacity-50"
           style={{ color: 'var(--color-text-light)' }}
         >
           <IconUser size={18} />

@@ -1,5 +1,10 @@
 import { App } from '@/components/App';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 
 export default function Home() {
-  return <App />;
+  return (
+    <RequireAuth>
+      <App />
+    </RequireAuth>
+  );
 }
