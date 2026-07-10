@@ -1,10 +1,14 @@
 import { apiFetch, apiStreamUrl } from './client';
 import { getAccessToken, refreshAccessToken } from './auth-store';
-import type { ChatSession, ChatStreamEvent } from './types';
+import type { ChatSession, ChatSessionDetail, ChatStreamEvent } from './types';
 
 export async function listChatSessions(search?: string): Promise<ChatSession[]> {
   const query = search ? `?search=${encodeURIComponent(search)}` : '';
   return apiFetch<ChatSession[]>(`/chat/sessions${query}`);
+}
+
+export async function getChatSession(sessionId: string): Promise<ChatSessionDetail> {
+  return apiFetch<ChatSessionDetail>(`/chat/sessions/${sessionId}`);
 }
 
 export async function createChatSession(title?: string): Promise<ChatSession> {
