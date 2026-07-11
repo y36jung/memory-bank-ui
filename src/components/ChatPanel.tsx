@@ -225,6 +225,7 @@ export function ChatPanel({
           activeSessionId={session?.id ?? null}
           onSelect={(id) => { onSelectSession(id); setShowHistory(false); }}
           onClose={() => setShowHistory(false)}
+          onActiveSessionDeleted={onSelectSession}
         />
       )}
 

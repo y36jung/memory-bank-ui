@@ -1,7 +1,14 @@
 'use client';
 
 import { skipToken, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { createChatSession, getChatSession, listChatSessions, streamChatMessage } from '@/lib/api/chat';
+import {
+  createChatSession,
+  deleteChatSession,
+  getChatSession,
+  listChatSessions,
+  renameChatSession,
+  streamChatMessage,
+} from '@/lib/api/chat';
 import type { ChatMessage, ChatSessionDetail, ChatSource } from '@/lib/api/types';
 
 export function useChatSessions(search?: string) {
@@ -26,6 +33,32 @@ export function useCreateChatSession() {
     onSuccess: (session) => {
       queryClient.invalidateQueries({ queryKey: ['chat', 'sessions'] });
       queryClient.setQueryData(['chat', 'session', session.id], { ...session, messages: [] });
+    },
+  });
+}
+
+export function useRenameChatSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId, title }: { sessionId: string; title: string }) =>
+      renameChatSession(sessionId, title),
+    onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['chat', 'sessions'] });
+      queryClient.setQueryData<ChatSessionDetail>(sessionKey(session.id), (prev) =>
+        prev ? { ...prev, title: session.title, updatedAt: session.updatedAt } : prev,
+      );
+    },
+  });
+}
+
+export function useDeleteChatSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => deleteChatSession(sessionId),
+    onSuccess: (_data, sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['chat', 'sessions'] });
+      queryClient.removeQueries({ queryKey: sessionKey(sessionId) });
+      queryClient.removeQueries({ queryKey: streamKey(sessionId) });
     },
   });
 }
