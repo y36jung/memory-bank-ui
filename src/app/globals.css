@@ -25,17 +25,6 @@
   --color-amber-text: #633806;
 
   --color-pdf: #993C1D;
-
-  --color-citation-highlight: rgba(15, 110, 86, 0.35);
-}
-
-.citation-highlight-mark {
-  background-color: var(--color-citation-highlight);
-  /* Text-layer glyphs are already transparent (rendered over the PDF
-     canvas) — the UA default mark{color:black} would make the highlighted
-     text visibly render twice. */
-  color: transparent;
-  border-radius: 2px;
 }
 
 html, body {

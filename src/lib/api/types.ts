@@ -42,7 +42,6 @@ export interface ChatSource {
   documentName: string;
   score?: number;
   pageNumber?: number | null;
-  content?: string;
 }
 
 export type ChatMessageRole = 'user' | 'assistant';
