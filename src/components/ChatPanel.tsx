@@ -56,7 +56,7 @@ function SourceFooter({
   onCitationClick,
 }: {
   sources: ChatSource[];
-  onCitationClick?: (documentId: string, pageNumber: number | null) => void;
+  onCitationClick?: (source: ChatSource) => void;
 }) {
   if (sources.length === 0) return null;
   return (
@@ -68,7 +68,7 @@ function SourceFooter({
         <button
           key={i}
           className="flex items-center gap-1 py-0.5 w-full text-left hover:opacity-75 transition-opacity truncate"
-          onClick={() => onCitationClick?.(src.documentId, src.pageNumber ?? null)}
+          onClick={() => onCitationClick?.(src)}
           style={{ color: 'var(--color-text-light)' }}
         >
           <span className="truncate">{src.documentName}</span>
@@ -103,7 +103,7 @@ function AiBubble({
 }: {
   content: string;
   sources?: ChatSource[];
-  onCitationClick?: (documentId: string, pageNumber: number | null) => void;
+  onCitationClick?: (source: ChatSource) => void;
 }) {
   return (
     <div className="flex justify-start animate-fade-in-up">
@@ -131,7 +131,7 @@ export function ChatPanel({
   session: ChatSession | null;
   onNewSession: () => void;
   onSelectSession: (id: string) => void;
-  onCitationClick?: (documentId: string, pageNumber: number | null) => void;
+  onCitationClick?: (source: ChatSource) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
