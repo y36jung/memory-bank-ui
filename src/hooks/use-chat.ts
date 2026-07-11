@@ -1,9 +1,8 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { createChatSession, listChatSessions, streamChatMessage } from '@/lib/api/chat';
-import type { ChatSource } from '@/lib/api/types';
+import { skipToken, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { createChatSession, getChatSession, listChatSessions, streamChatMessage } from '@/lib/api/chat';
+import type { ChatMessage, ChatSessionDetail, ChatSource } from '@/lib/api/types';
 
 export function useChatSessions(search?: string) {
   return useQuery({
@@ -12,49 +11,99 @@ export function useChatSessions(search?: string) {
   });
 }
 
+export function useChatSession(sessionId: string | null) {
+  return useQuery({
+    queryKey: ['chat', 'session', sessionId],
+    queryFn: () => getChatSession(sessionId as string),
+    enabled: sessionId !== null,
+  });
+}
+
 export function useCreateChatSession() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (title?: string) => createChatSession(title),
-    onSuccess: () => {
+    onSuccess: (session) => {
       queryClient.invalidateQueries({ queryKey: ['chat', 'sessions'] });
+      queryClient.setQueryData(['chat', 'session', session.id], { ...session, messages: [] });
     },
   });
 }
 
-export function useStreamChatMessage() {
-  const [streamedContent, setStreamedContent] = useState('');
-  const [sources, setSources] = useState<ChatSource[]>([]);
-  const [messageId, setMessageId] = useState<string | null>(null);
+interface ChatStreamState {
+  content: string;
+  sources: ChatSource[];
+}
 
-  const mutation = useMutation({
-    mutationFn: ({
-      sessionId,
-      message,
-      signal,
-    }: {
-      sessionId: string;
-      message: string;
-      signal?: AbortSignal;
-    }) => {
-      setStreamedContent('');
-      setSources([]);
-      setMessageId(null);
-      return streamChatMessage(
+function sessionKey(sessionId: string) {
+  return ['chat', 'session', sessionId] as const;
+}
+
+function streamKey(sessionId: string) {
+  return ['chat', 'stream', sessionId] as const;
+}
+
+function appendMessage(queryClient: QueryClient, sessionId: string, message: ChatMessage) {
+  queryClient.setQueryData<ChatSessionDetail>(sessionKey(sessionId), (prev) =>
+    prev ? { ...prev, messages: [...prev.messages, message] } : prev,
+  );
+}
+
+// Live per-session streaming buffer, backed by the query cache instead of
+// component state. A response streaming for session A only ever touches A's
+// cache entry, so it can't leak into whatever session happens to be on
+// screen, and it survives the user navigating away and back.
+export function useChatStream(sessionId: string | null) {
+  return useQuery<ChatStreamState>({
+    queryKey: streamKey(sessionId ?? '__none__'),
+    queryFn: skipToken,
+  });
+}
+
+export function useSendChatMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ sessionId, message }: { sessionId: string; message: string }) => {
+      appendMessage(queryClient, sessionId, {
+        id: `optimistic-${Date.now()}`,
         sessionId,
-        message,
-        (event) => {
+        role: 'user',
+        content: message,
+        sources: null,
+        createdAt: new Date().toISOString(),
+      });
+
+      queryClient.setQueryData<ChatStreamState>(streamKey(sessionId), { content: '', sources: [] });
+
+      try {
+        await streamChatMessage(sessionId, message, (event) => {
           if (event.type === 'delta') {
-            setStreamedContent((prev) => prev + event.content);
+            queryClient.setQueryData<ChatStreamState>(streamKey(sessionId), (prev) => ({
+              content: (prev?.content ?? '') + event.content,
+              sources: prev?.sources ?? [],
+            }));
           } else if (event.type === 'done') {
-            setMessageId(event.messageId);
-            setSources(event.sources);
+            const buffered = queryClient.getQueryData<ChatStreamState>(streamKey(sessionId));
+            if (buffered?.content) {
+              appendMessage(queryClient, sessionId, {
+                id: event.messageId,
+                sessionId,
+                role: 'assistant',
+                content: buffered.content,
+                sources: event.sources.length > 0 ? event.sources : null,
+                createdAt: new Date().toISOString(),
+              });
+            }
+            queryClient.removeQueries({ queryKey: streamKey(sessionId) });
+          } else if (event.type === 'error') {
+            queryClient.removeQueries({ queryKey: streamKey(sessionId) });
           }
-        },
-        signal,
-      );
+        });
+      } catch (err) {
+        queryClient.removeQueries({ queryKey: streamKey(sessionId) });
+        throw err;
+      }
     },
   });
-
-  return { ...mutation, streamedContent, sources, messageId };
 }

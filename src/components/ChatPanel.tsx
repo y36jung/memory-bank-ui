@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { IconHistory, IconPlus, IconArrowUp, IconSend } from '@tabler/icons-react';
-import { useStreamChatMessage } from '@/hooks';
+import { useChatSession, useChatStream, useSendChatMessage } from '@/hooks';
 import { SessionsModal } from './SessionsModal';
 import type { ChatSource, ChatSession } from '@/lib/api/types';
 
@@ -25,6 +25,28 @@ function ThinkingDots() {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+function HistoryLoadingState() {
+  return (
+    <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-text-light)' }}>
+      <ThinkingDots />
+    </div>
+  );
+}
+
+function HistoryErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center h-full gap-2 text-center"
+      style={{ color: 'var(--color-text-light)' }}
+    >
+      <span className="text-xs">Couldn&apos;t load this conversation.</span>
+      <button onClick={onRetry} className="text-xs font-medium underline" style={{ color: 'var(--color-teal)' }}>
+        Try again
+      </button>
     </div>
   );
 }
@@ -114,19 +136,29 @@ export function ChatPanel({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [isThinking, setIsThinking] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const sessionIdRef = useRef<string | null>(null);
 
-  const { mutate: streamMessage, isPending, streamedContent, sources } = useStreamChatMessage();
+  const { mutate: sendMessage } = useSendChatMessage();
 
-  // Use refs so onSuccess callback always reads the latest streamed values
-  const streamedContentRef = useRef('');
-  const sourcesRef = useRef<ChatSource[]>([]);
-  useEffect(() => { streamedContentRef.current = streamedContent; }, [streamedContent]);
-  useEffect(() => { sourcesRef.current = sources; }, [sources]);
+  const activeSessionId = session?.id ?? null;
+  const {
+    data: sessionDetail,
+    isFetching: isSessionFetching,
+    isError: isSessionError,
+    refetch: refetchSessionDetail,
+  } = useChatSession(activeSessionId);
+
+  // Streaming state for whichever session is on screen. Keyed by session id
+  // in the query cache, so a response streaming for a different session
+  // never shows up here, and switching back mid-stream (or after it
+  // finishes) picks the right state back up.
+  const { data: activeStream } = useChatStream(activeSessionId);
+  const isStreamingActive = activeStream !== undefined;
+  const isThinking = isStreamingActive && activeStream.content === '';
+  const streamedContent = activeStream?.content ?? '';
 
   // Reset local state when switching sessions
   useEffect(() => {
@@ -134,48 +166,40 @@ export function ChatPanel({
       sessionIdRef.current = session?.id ?? null;
       setMessages([]);
       setInput('');
-      setIsThinking(false);
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     }
   }, [session?.id]);
+
+  // Sync messages from fetched history whenever it changes for the active
+  // session. Never let it shrink what's already shown: a background refetch
+  // can resolve with a pre-send snapshot after an optimistic send already
+  // appended locally, and that snapshot must not clobber it.
+  useEffect(() => {
+    if (!sessionDetail || sessionDetail.id !== activeSessionId) return;
+    setMessages((prev) => {
+      if (sessionDetail.messages.length < prev.length) return prev;
+      return sessionDetail.messages.map((m) => ({
+        role: m.role === 'assistant' ? 'ai' : 'user',
+        content: m.content,
+        sources: m.sources && m.sources.length > 0 ? m.sources : undefined,
+      }));
+    });
+  }, [sessionDetail, activeSessionId]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamedContent, isThinking]);
 
-  // Stop showing thinking dots once content starts arriving
-  useEffect(() => {
-    if (streamedContent) setIsThinking(false);
-  }, [streamedContent]);
-
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if (!text || !session || isPending) return;
+    if (!text || !session || isStreamingActive) return;
 
-    setMessages((prev) => [...prev, { role: 'user', content: text }]);
     setInput('');
-    setIsThinking(true);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
-    streamMessage(
-      { sessionId: session.id, message: text },
-      {
-        onSuccess: () => {
-          setIsThinking(false);
-          const content = streamedContentRef.current;
-          const srcs = sourcesRef.current;
-          if (content) {
-            setMessages((prev) => [
-              ...prev,
-              { role: 'ai', content, sources: srcs.length > 0 ? srcs : undefined },
-            ]);
-          }
-        },
-        onError: () => setIsThinking(false),
-      },
-    );
-  }, [input, session, isPending, streamMessage]);
+    sendMessage({ sessionId: session.id, message: text });
+  }, [input, session, isStreamingActive, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -191,7 +215,8 @@ export function ChatPanel({
     el.style.height = `${Math.min(el.scrollHeight, 90)}px`;
   };
 
-  const isInputDisabled = isPending || !session;
+  const isInitialHistoryLoad = !!session && isSessionFetching && !sessionDetail;
+  const isInputDisabled = isStreamingActive || !session || isInitialHistoryLoad;
 
   return (
     <div className="w-[340px] shrink-0 flex flex-col h-full relative" style={{ backgroundColor: 'var(--color-surface)' }}>
@@ -236,28 +261,36 @@ export function ChatPanel({
         className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
         style={{ backgroundColor: 'var(--color-bg)' }}
       >
-        {messages.length === 0 && !isPending && (
-          <div
-            className="flex flex-col items-center justify-center h-full gap-2"
-            style={{ color: 'var(--color-text-light)' }}
-          >
-            <IconArrowUp size={28} />
-            <span className="text-xs">Ask about your documents</span>
-          </div>
-        )}
-
-        {messages.map((msg, i) =>
-          msg.role === 'user' ? (
-            <UserBubble key={i} content={msg.content} />
-          ) : (
-            <AiBubble key={i} content={msg.content} sources={msg.sources} onCitationClick={onCitationClick} />
-          ),
-        )}
-
-        {isPending && (
+        {isSessionError ? (
+          <HistoryErrorState onRetry={() => refetchSessionDetail()} />
+        ) : isInitialHistoryLoad ? (
+          <HistoryLoadingState />
+        ) : (
           <>
-            {isThinking && !streamedContent && <ThinkingDots />}
-            {streamedContent && <AiBubble content={streamedContent} />}
+            {messages.length === 0 && !isStreamingActive && (
+              <div
+                className="flex flex-col items-center justify-center h-full gap-2"
+                style={{ color: 'var(--color-text-light)' }}
+              >
+                <IconArrowUp size={28} />
+                <span className="text-xs">Ask about your documents</span>
+              </div>
+            )}
+
+            {messages.map((msg, i) =>
+              msg.role === 'user' ? (
+                <UserBubble key={i} content={msg.content} />
+              ) : (
+                <AiBubble key={i} content={msg.content} sources={msg.sources} onCitationClick={onCitationClick} />
+              ),
+            )}
+
+            {isStreamingActive && (
+              <>
+                {isThinking && <ThinkingDots />}
+                {streamedContent && <AiBubble content={streamedContent} />}
+              </>
+            )}
           </>
         )}
 
@@ -278,7 +311,13 @@ export function ChatPanel({
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            placeholder={session ? 'Ask about your documents…' : 'Create a session to start chatting'}
+            placeholder={
+              !session
+                ? 'Create a session to start chatting'
+                : isInitialHistoryLoad
+                  ? 'Loading conversation…'
+                  : 'Ask about your documents…'
+            }
             disabled={isInputDisabled}
             rows={1}
             className="flex-1 bg-transparent outline-none resize-none text-xs placeholder:text-(--color-text-light) disabled:opacity-50"

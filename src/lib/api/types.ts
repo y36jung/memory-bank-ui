@@ -44,6 +44,21 @@ export interface ChatSource {
   pageNumber?: number | null;
 }
 
+export type ChatMessageRole = 'user' | 'assistant';
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  role: ChatMessageRole;
+  content: string;
+  sources: ChatSource[] | null;
+  createdAt: string;
+}
+
+export type ChatSessionDetail = ChatSession & {
+  messages: ChatMessage[];
+};
+
 export type ChatStreamEvent =
   | { type: 'delta'; content: string }
   | { type: 'done'; messageId: string; sources: ChatSource[] }
