@@ -11,13 +11,12 @@ const DocumentViewer = dynamic(
   { ssr: false },
 );
 import { useCreateChatSession, useChatSessions, useDocuments } from '@/hooks';
-import type { ChatSession, ChatSource, Document } from '@/lib/api/types';
+import type { ChatSession, Document } from '@/lib/api/types';
 
 export function App() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [targetPage, setTargetPage] = useState<number | null>(null);
-  const [highlightText, setHighlightText] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
   const { data: sessions } = useChatSessions();
@@ -50,14 +49,12 @@ export function App() {
   function handleSelectDoc(doc: Document) {
     setSelectedDoc(doc);
     setTargetPage(null);
-    setHighlightText(null);
   }
 
-  function handleCitationClick(source: ChatSource) {
-    const doc = docsData?.items.find((d) => d.id === source.documentId);
+  function handleCitationClick(documentId: string, pageNumber: number | null) {
+    const doc = docsData?.items.find((d) => d.id === documentId);
     if (doc) setSelectedDoc(doc);
-    setTargetPage(source.pageNumber ?? null);
-    setHighlightText(source.content ?? null);
+    setTargetPage(pageNumber);
   }
 
   return (
@@ -67,11 +64,7 @@ export function App() {
         selectedDocId={selectedDoc?.id ?? null}
         onSelectDoc={handleSelectDoc}
       />
-      <DocumentViewer
-        doc={selectedDoc}
-        targetPage={targetPage ?? undefined}
-        highlightText={highlightText ?? undefined}
-      />
+      <DocumentViewer doc={selectedDoc} targetPage={targetPage ?? undefined} />
       <ChatPanel
         session={activeSession}
         onNewSession={handleNewSession}
