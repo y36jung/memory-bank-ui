@@ -30,3 +30,7 @@ export async function logout(): Promise<{ success: boolean }> {
     credentials: 'include',
   });
 }
+
+export async function deleteAccount(): Promise<void> {
+  await apiFetch<{ deleted: boolean }>('/auth/me', { method: 'DELETE' });
+}

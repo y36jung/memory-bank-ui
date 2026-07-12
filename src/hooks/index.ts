@@ -8,4 +8,4 @@ export {
   useChatStream,
 } from './use-chat';
 export { useDocuments, useUploadDocument } from './use-documents';
-export { useLogin, useRegister, useLogout } from './use-auth';
+export { useLogin, useRegister, useLogout, useDeleteAccount } from './use-auth';

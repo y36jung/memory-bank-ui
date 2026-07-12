@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { login, register, logout, type AuthCredentials } from '@/lib/api/auth';
+import { login, register, logout, deleteAccount, type AuthCredentials } from '@/lib/api/auth';
 import { setAuthenticated, setUnauthenticated } from '@/lib/api/auth-store';
 
 export function useLogin() {
@@ -23,6 +23,17 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => logout(),
     onSettled: () => {
+      setUnauthenticated();
+      queryClient.clear();
+    },
+  });
+}
+
+export function useDeleteAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteAccount(),
+    onSuccess: () => {
       setUnauthenticated();
       queryClient.clear();
     },
