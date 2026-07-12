@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import type { PageProps, TextContent, TextItem } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import ReactMarkdown from 'react-markdown';
@@ -16,11 +15,6 @@ import {
 } from '@tabler/icons-react';
 import type { Document as Doc } from '@/lib/api/types';
 import { getDocumentFile } from '@/lib/api/documents';
-import { buildPageText, locateChunk, rangesOverlap, type PageText } from '@/lib/textMatch';
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -118,15 +112,7 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
-function PdfViewer({
-  documentId,
-  targetPage,
-  highlightText,
-}: {
-  documentId: string;
-  targetPage?: number;
-  highlightText?: string;
-}) {
+function PdfViewer({ documentId, targetPage }: { documentId: string; targetPage?: number }) {
   const [numPages, setNumPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,20 +120,6 @@ function PdfViewer({
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(600);
-
-  // Resolved text per page, keyed by 1-based page number. onGetTextSuccess
-  // fires exactly once per page (react-pdf only re-runs that effect when
-  // the page's own textContent resolves, not when the callback prop
-  // changes), so it's attached unconditionally to every page below rather
-  // than gated to the current target page.
-  const pageTextCache = useRef<Map<number, PageText>>(new Map());
-  const [cacheVersion, setCacheVersion] = useState(0);
-
-  // Character range of the located chunk within the target page's text.
-  const [matchRange, setMatchRange] = useState<{ start: number; end: number } | null>(null);
-
-  // Prevents re-scrolling to the same highlight on unrelated re-renders (e.g. a resize).
-  const scrolledForRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,10 +129,6 @@ function PdfViewer({
     setError(null);
     setBlobUrl(null);
     pageRefs.current = [];
-    pageTextCache.current = new Map();
-    setCacheVersion(0);
-    setMatchRange(null);
-    scrolledForRef.current = null;
     getDocumentFile(documentId)
       .then((blob) => {
         if (cancelled) return;
@@ -189,56 +157,6 @@ function PdfViewer({
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [targetPage]);
 
-  const handleGetTextSuccess = useCallback((pageNumber: number, textContent: TextContent) => {
-    const items = textContent.items.filter((it): it is TextItem => 'str' in it);
-    pageTextCache.current.set(pageNumber, buildPageText(items));
-    setCacheVersion((v) => v + 1);
-  }, []);
-
-  // Re-locate the chunk whenever the target page, the highlight text, or a
-  // newly-resolved page's cached text changes.
-  useEffect(() => {
-    if (targetPage == null || !highlightText) {
-      setMatchRange(null);
-      return;
-    }
-    const cached = pageTextCache.current.get(targetPage);
-    setMatchRange(cached ? locateChunk(cached.pageText, highlightText) : null);
-    // cacheVersion is read only to retrigger this effect once a page's text resolves.
-  }, [targetPage, highlightText, cacheVersion]);
-
-  const customTextRenderer: NonNullable<PageProps['customTextRenderer']> = useCallback(
-    ({ itemIndex, str }) => {
-      const range = targetPage != null ? pageTextCache.current.get(targetPage)?.itemRanges[itemIndex] : undefined;
-      if (!matchRange || !range || !rangesOverlap(range, matchRange)) {
-        return escapeHtml(str);
-      }
-      const overlapStart = Math.max(range.start, matchRange.start) - range.start;
-      const overlapEnd = Math.min(range.end, matchRange.end) - range.start;
-      const before = str.slice(0, overlapStart);
-      const match = str.slice(overlapStart, overlapEnd);
-      const after = str.slice(overlapEnd);
-      return (
-        escapeHtml(before) +
-        `<mark class="citation-highlight-mark" data-citation-highlight>${escapeHtml(match)}</mark>` +
-        escapeHtml(after)
-      );
-    },
-    [matchRange, targetPage],
-  );
-
-  const handleRenderTextLayerSuccess = useCallback(() => {
-    if (targetPage == null) return;
-    const key = `${targetPage}:${highlightText ?? ''}`;
-    if (scrolledForRef.current === key) return;
-    const pageEl = pageRefs.current[targetPage - 1];
-    const mark = pageEl?.querySelector('mark[data-citation-highlight]');
-    if (mark) {
-      scrolledForRef.current = key;
-      mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [targetPage, highlightText]);
-
   return (
     <div ref={containerRef} className="w-full">
       {loading && <LoadingSkeleton />}
@@ -249,27 +167,20 @@ function PdfViewer({
           onLoadSuccess={({ numPages: n }) => { setNumPages(n); setLoading(false); }}
           onLoadError={(e) => { setError(e.message); setLoading(false); }}
         >
-          {Array.from({ length: numPages }, (_, i) => {
-            const pageNumber = i + 1;
-            const isTargetPage = pageNumber === targetPage;
-            return (
-              <div key={i} ref={(el) => { pageRefs.current[i] = el; }}>
-                <div
-                  className="text-center text-[11px] py-1.5"
-                  style={{ color: 'var(--color-text-light)' }}
-                >
-                  Page {pageNumber} of {numPages}
-                </div>
-                <Page
-                  pageNumber={pageNumber}
-                  width={containerWidth || undefined}
-                  onGetTextSuccess={(textContent) => handleGetTextSuccess(pageNumber, textContent)}
-                  customTextRenderer={isTargetPage ? customTextRenderer : undefined}
-                  onRenderTextLayerSuccess={isTargetPage ? handleRenderTextLayerSuccess : undefined}
-                />
+          {Array.from({ length: numPages }, (_, i) => (
+            <div key={i} ref={(el) => { pageRefs.current[i] = el; }}>
+              <div
+                className="text-center text-[11px] py-1.5"
+                style={{ color: 'var(--color-text-light)' }}
+              >
+                Page {i + 1} of {numPages}
               </div>
-            );
-          })}
+              <Page
+                pageNumber={i + 1}
+                width={containerWidth || undefined}
+              />
+            </div>
+          ))}
         </Document>
       )}
     </div>
@@ -452,15 +363,7 @@ function UnsupportedViewer({ mimeType }: { mimeType: string }) {
   );
 }
 
-export function DocumentViewer({
-  doc,
-  targetPage,
-  highlightText,
-}: {
-  doc: Doc | null;
-  targetPage?: number;
-  highlightText?: string;
-}) {
+export function DocumentViewer({ doc, targetPage }: { doc: Doc | null; targetPage?: number }) {
   if (!doc) {
     return (
       <div
@@ -525,7 +428,7 @@ export function DocumentViewer({
         className="flex-1 overflow-y-auto"
         style={{ backgroundColor: 'var(--color-bg)' }}
       >
-        {isPdf && <PdfViewer documentId={doc.id} targetPage={targetPage} highlightText={highlightText} />}
+        {isPdf && <PdfViewer documentId={doc.id} targetPage={targetPage} />}
         {isMarkdown && <MarkdownViewer documentId={doc.id} />}
         {isCsv && <CsvViewer documentId={doc.id} />}
         {!isPdf && !isMarkdown && !isCsv && <UnsupportedViewer mimeType={doc.mimeType} />}
