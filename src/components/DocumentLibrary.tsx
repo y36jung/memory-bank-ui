@@ -10,8 +10,9 @@ import {
   IconFileTypePdf,
   IconMarkdown,
   IconFile,
+  IconLock,
 } from '@tabler/icons-react';
-import { useDocuments, useUploadDocument } from '@/hooks';
+import { useDocuments, useUploadDocument, useIsDemoAccount } from '@/hooks';
 import type { Document } from '@/lib/api/types';
 
 function formatDate(iso: string) {
@@ -162,6 +163,7 @@ export function DocumentLibrary({
 
   const { data, isLoading } = useDocuments({ search: debouncedSearch || undefined });
   const queryClient = useQueryClient();
+  const isDemoAccount = useIsDemoAccount();
 
   const hasInProgress = data?.items.some(
     (d) => d.status === 'pending' || d.status === 'processing',
@@ -217,9 +219,19 @@ export function DocumentLibrary({
       </div>
 
       {/* Upload zone */}
-      <UploadZone
-        onUpload={(file) => uploadMutation.mutate(file)}
-      />
+      {isDemoAccount ? (
+        <div
+          className="mx-3 my-2 rounded-lg border border-dashed flex flex-col items-center gap-1 py-3 text-center px-2"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-light)' }}
+        >
+          <IconLock size={14} />
+          <span className="text-[11px]">Uploads are disabled on the demo account</span>
+        </div>
+      ) : (
+        <UploadZone
+          onUpload={(file) => uploadMutation.mutate(file)}
+        />
+      )}
 
       {/* Document list */}
       <div className="flex-1 overflow-y-auto">

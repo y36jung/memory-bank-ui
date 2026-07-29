@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { IconMailCheck } from '@tabler/icons-react';
 import { useLogin } from '@/hooks';
 import { ApiError } from '@/lib/api/client';
+import { BETA_MODE, DEMO_EMAIL, DEMO_PASSWORD, DEMO_LOGIN_ENABLED } from '@/lib/beta';
 import { AuthShell } from './AuthShell';
 import { SuccessPanel } from './SuccessPanel';
 import {
@@ -44,6 +45,24 @@ export function LoginForm() {
     setBanner(null);
   }
 
+  function performLogin(credentials: { email: string; password: string }) {
+    login.mutate(credentials, {
+      onError: (error) => {
+        if (error instanceof ApiError) {
+          if (error.code === 'INVALID_CREDENTIALS') {
+            setBanner('Incorrect email or password.');
+            return;
+          }
+          if (error.code === 'RATE_LIMITED') {
+            setBanner('Too many attempts. Please wait a moment and try again.');
+            return;
+          }
+        }
+        setBanner('Something went wrong. Please try again.');
+      },
+    });
+  }
+
   function handleSubmit() {
     const errs: FormErrors = {};
     if (!email) errs.email = 'Enter your email';
@@ -53,24 +72,14 @@ export function LoginForm() {
     setBanner(null);
     if (Object.keys(errs).length) return;
 
-    login.mutate(
-      { email, password },
-      {
-        onError: (error) => {
-          if (error instanceof ApiError) {
-            if (error.code === 'INVALID_CREDENTIALS') {
-              setBanner('Incorrect email or password.');
-              return;
-            }
-            if (error.code === 'RATE_LIMITED') {
-              setBanner('Too many attempts. Please wait a moment and try again.');
-              return;
-            }
-          }
-          setBanner('Something went wrong. Please try again.');
-        },
-      },
-    );
+    performLogin({ email, password });
+  }
+
+  function handleDemoLogin() {
+    if (!DEMO_LOGIN_ENABLED || !DEMO_EMAIL || !DEMO_PASSWORD) return;
+    setErrors({});
+    setBanner(null);
+    performLogin({ email: DEMO_EMAIL, password: DEMO_PASSWORD });
   }
 
   if (login.isSuccess) {
@@ -151,7 +160,23 @@ export function LoginForm() {
         Sign in
       </SubmitButton>
 
-      <SwitchRow prompt="New to Memory Bank?" linkLabel="Create an account" href="/register" />
+      {BETA_MODE ? (
+        <div style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--color-text-light)', marginTop: 16, lineHeight: 1.5 }}>
+          Memory Bank is in private beta — new account creation is invite-only.{' '}
+          {DEMO_LOGIN_ENABLED && (
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={login.isPending}
+              style={{ ...linkStyle, fontSize: 'inherit', fontWeight: 500 }}
+            >
+              {login.isPending ? 'Signing in…' : 'Try demo account'}
+            </button>
+          )}
+        </div>
+      ) : (
+        <SwitchRow prompt="New to Memory Bank?" linkLabel="Create an account" href="/register" />
+      )}
     </AuthShell>
   );
 }

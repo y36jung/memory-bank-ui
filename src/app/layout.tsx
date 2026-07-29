@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "./providers";
+import { BETA_MODE } from "@/lib/beta";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -9,8 +10,9 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Memory Bank",
+  title: BETA_MODE ? "Memory Bank (Beta)" : "Memory Bank",
   description: "Your personal document memory",
+  ...(BETA_MODE ? { robots: { index: false, follow: false } } : {}),
 };
 
 export default function RootLayout({

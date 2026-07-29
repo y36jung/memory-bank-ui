@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import {
   IconMail,
+  IconUsers,
   IconLogout2,
   IconTrash,
   IconAlertTriangle,
@@ -10,7 +11,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { useAuthState } from '@/components/auth/AuthProvider';
-import { useLogout, useDeleteAccount } from '@/hooks';
+import { useLogout, useDeleteAccount, useIsDemoAccount } from '@/hooks';
 import { ApiError } from '@/lib/api/client';
 
 type View = 'profile' | 'confirm';
@@ -28,11 +29,13 @@ function ProfileView({
   logoutPending,
   onLogout,
   onDeleteRequest,
+  isDemoAccount,
 }: {
   email: string;
   logoutPending: boolean;
   onLogout: () => void;
   onDeleteRequest: () => void;
+  isDemoAccount: boolean;
 }) {
   return (
     <>
@@ -58,19 +61,30 @@ function ProfileView({
           className="text-[10.5px] font-semibold tracking-[0.05em] uppercase mb-[7px]"
           style={{ color: 'var(--color-text-light)' }}
         >
-          Email
+          {isDemoAccount ? 'Account type' : 'Email'}
         </div>
         <div
           className="flex items-center gap-[9px] border rounded-lg px-[11px] py-[9px]"
           style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-secondary)' }}
         >
-          <IconMail size={15} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
-          <span
-            className="text-[12.5px] overflow-hidden text-ellipsis whitespace-nowrap"
-            style={{ color: 'var(--color-text)' }}
-          >
-            {email}
-          </span>
+          {isDemoAccount ? (
+            <>
+              <IconUsers size={15} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
+              <span className="text-[12.5px]" style={{ color: 'var(--color-text)' }}>
+                Shared demo account
+              </span>
+            </>
+          ) : (
+            <>
+              <IconMail size={15} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
+              <span
+                className="text-[12.5px] overflow-hidden text-ellipsis whitespace-nowrap"
+                style={{ color: 'var(--color-text)' }}
+              >
+                {email}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -86,15 +100,24 @@ function ProfileView({
           {logoutPending ? <IconLoader2 size={14} className="animate-auth-spin" /> : <IconLogout2 size={14} />}
           Log out
         </button>
-        <button
-          disabled={logoutPending}
-          onClick={onDeleteRequest}
-          className="w-full rounded-lg px-3 py-[9px] text-[12.5px] font-medium flex items-center justify-center gap-[7px] border transition-colors duration-150 cursor-pointer hover:bg-pdf-light disabled:opacity-60 disabled:cursor-default"
-          style={{ backgroundColor: 'transparent', color: 'var(--color-pdf)', borderColor: 'var(--color-pdf-border)' }}
-        >
-          <IconTrash size={14} />
-          Delete account
-        </button>
+        {isDemoAccount ? (
+          <div
+            className="w-full rounded-lg px-3 py-[9px] text-[11.5px] text-center border"
+            style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-text-light)', borderColor: 'var(--color-border)' }}
+          >
+            Account deletion is disabled for the shared demo account.
+          </div>
+        ) : (
+          <button
+            disabled={logoutPending}
+            onClick={onDeleteRequest}
+            className="w-full rounded-lg px-3 py-[9px] text-[12.5px] font-medium flex items-center justify-center gap-[7px] border transition-colors duration-150 cursor-pointer hover:bg-pdf-light disabled:opacity-60 disabled:cursor-default"
+            style={{ backgroundColor: 'transparent', color: 'var(--color-pdf)', borderColor: 'var(--color-pdf-border)' }}
+          >
+            <IconTrash size={14} />
+            Delete account
+          </button>
+        )}
       </div>
     </>
   );
@@ -166,6 +189,7 @@ function ConfirmView({
 
 export function AccountModal({ onClose }: { onClose: () => void }) {
   const { user } = useAuthState();
+  const isDemoAccount = useIsDemoAccount();
   const [view, setView] = useState<View>('profile');
   const logout = useLogout();
   const deleteAccount = useDeleteAccount();
@@ -217,6 +241,7 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
             logoutPending={logout.isPending}
             onLogout={handleLogout}
             onDeleteRequest={() => setView('confirm')}
+            isDemoAccount={isDemoAccount}
           />
         ) : (
           <ConfirmView

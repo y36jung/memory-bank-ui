@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { LeftRail } from './LeftRail';
 import { DocumentLibrary } from './DocumentLibrary';
 import { ChatPanel } from './ChatPanel';
+import { DemoBanner } from './DemoBanner';
 
 const DocumentViewer = dynamic(
   () => import('./DocumentViewer').then((m) => ({ default: m.DocumentViewer })),
@@ -58,19 +59,22 @@ export function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <LeftRail />
-      <DocumentLibrary
-        selectedDocId={selectedDoc?.id ?? null}
-        onSelectDoc={handleSelectDoc}
-      />
-      <DocumentViewer doc={selectedDoc} targetPage={targetPage ?? undefined} />
-      <ChatPanel
-        session={activeSession}
-        onNewSession={handleNewSession}
-        onSelectSession={setActiveSessionId}
-        onCitationClick={handleCitationClick}
-      />
+    <div className="flex flex-col h-screen overflow-hidden">
+      <DemoBanner />
+      <div className="flex flex-1 overflow-hidden">
+        <LeftRail />
+        <DocumentLibrary
+          selectedDocId={selectedDoc?.id ?? null}
+          onSelectDoc={handleSelectDoc}
+        />
+        <DocumentViewer doc={selectedDoc} targetPage={targetPage ?? undefined} />
+        <ChatPanel
+          session={activeSession}
+          onNewSession={handleNewSession}
+          onSelectSession={setActiveSessionId}
+          onCitationClick={handleCitationClick}
+        />
+      </div>
     </div>
   );
 }
