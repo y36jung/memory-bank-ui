@@ -1,4 +1,5 @@
 import { IconDatabase } from '@tabler/icons-react';
+import { BETA_MODE } from '@/lib/beta';
 
 export function AuthShell({
   showFooter = true,
@@ -19,7 +20,17 @@ export function AuthShell({
         >
           <IconDatabase size={18} color="#fff" />
         </div>
-        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>Memory Bank</div>
+        <div className="flex items-center gap-[7px]">
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>Memory Bank</div>
+          {BETA_MODE && (
+            <span
+              className="text-[9.5px] font-semibold uppercase tracking-[0.04em] px-[7px] py-[2px] rounded-full"
+              style={{ backgroundColor: 'var(--color-teal-light)', color: 'var(--color-teal)' }}
+            >
+              Beta
+            </span>
+          )}
+        </div>
       </div>
 
       <div

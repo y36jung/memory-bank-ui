@@ -9,3 +9,4 @@ export {
 } from './use-chat';
 export { useDocuments, useUploadDocument } from './use-documents';
 export { useLogin, useRegister, useLogout, useDeleteAccount } from './use-auth';
+export { useIsDemoAccount } from './use-beta';
