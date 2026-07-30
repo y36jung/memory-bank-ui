@@ -11,6 +11,8 @@ import {
   IconFileDescription,
   IconFileTypePdf,
   IconMarkdown,
+  IconFileTypeHtml,
+  IconFileTypeTxt,
   IconFile,
 } from '@tabler/icons-react';
 import type { Document as Doc } from '@/lib/api/types';
@@ -36,6 +38,8 @@ function mimeLabel(mimeType: string): string {
   if (mimeType === 'application/pdf') return 'pdf';
   if (mimeType === 'text/markdown' || mimeType === 'text/x-markdown') return 'md';
   if (mimeType === 'text/csv') return 'csv';
+  if (mimeType === 'text/html') return 'html';
+  if (mimeType === 'text/plain') return 'txt';
   return mimeType.split('/')[1] ?? mimeType;
 }
 
@@ -44,6 +48,10 @@ function FileIcon({ mimeType }: { mimeType: string }) {
     return <IconFileTypePdf size={16} style={{ color: 'var(--color-pdf)', flexShrink: 0 }} />;
   if (mimeType === 'text/markdown' || mimeType === 'text/x-markdown')
     return <IconMarkdown size={16} style={{ color: 'var(--color-teal)', flexShrink: 0 }} />;
+  if (mimeType === 'text/html')
+    return <IconFileTypeHtml size={16} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />;
+  if (mimeType === 'text/plain')
+    return <IconFileTypeTxt size={16} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />;
   return <IconFile size={16} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />;
 }
 
@@ -352,6 +360,68 @@ function CsvViewer({ documentId }: { documentId: string }) {
   );
 }
 
+function TextViewer({ documentId }: { documentId: string }) {
+  const [content, setContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setContent(null);
+    setLoading(true);
+    setError(null);
+    getDocumentFile(documentId)
+      .then((blob) => blob.text())
+      .then((text) => { if (!cancelled) setContent(text); })
+      .catch((e: Error) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [documentId]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} />;
+
+  return (
+    <pre
+      className="px-4 py-3 text-xs whitespace-pre-wrap wrap-break-word font-mono"
+      style={{ color: 'var(--color-text)' }}
+    >
+      {content}
+    </pre>
+  );
+}
+
+function HtmlViewer({ documentId }: { documentId: string }) {
+  const [content, setContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setContent(null);
+    setLoading(true);
+    setError(null);
+    getDocumentFile(documentId)
+      .then((blob) => blob.text())
+      .then((text) => { if (!cancelled) setContent(text); })
+      .catch((e: Error) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [documentId]);
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorState message={error} />;
+
+  return (
+    <iframe
+      sandbox=""
+      srcDoc={content ?? ''}
+      title="HTML preview"
+      className="w-full h-full border-0"
+    />
+  );
+}
+
 function UnsupportedViewer({ mimeType }: { mimeType: string }) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-2 py-16">
@@ -381,6 +451,8 @@ export function DocumentViewer({ doc, targetPage }: { doc: Doc | null; targetPag
   const isPdf = doc.mimeType === 'application/pdf';
   const isMarkdown = doc.mimeType === 'text/markdown' || doc.mimeType === 'text/x-markdown';
   const isCsv = doc.mimeType === 'text/csv';
+  const isHtml = doc.mimeType === 'text/html';
+  const isText = doc.mimeType === 'text/plain';
 
   return (
     <div
@@ -431,7 +503,11 @@ export function DocumentViewer({ doc, targetPage }: { doc: Doc | null; targetPag
         {isPdf && <PdfViewer documentId={doc.id} targetPage={targetPage} />}
         {isMarkdown && <MarkdownViewer documentId={doc.id} />}
         {isCsv && <CsvViewer documentId={doc.id} />}
-        {!isPdf && !isMarkdown && !isCsv && <UnsupportedViewer mimeType={doc.mimeType} />}
+        {isHtml && <HtmlViewer documentId={doc.id} />}
+        {isText && <TextViewer documentId={doc.id} />}
+        {!isPdf && !isMarkdown && !isCsv && !isHtml && !isText && (
+          <UnsupportedViewer mimeType={doc.mimeType} />
+        )}
       </div>
     </div>
   );
