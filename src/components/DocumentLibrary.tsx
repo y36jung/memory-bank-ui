@@ -9,6 +9,8 @@ import {
   IconUpload,
   IconFileTypePdf,
   IconMarkdown,
+  IconFileTypeHtml,
+  IconFileTypeTxt,
   IconFile,
   IconLock,
 } from '@tabler/icons-react';
@@ -53,6 +55,12 @@ function FileIcon({ mimeType }: { mimeType: string }) {
   }
   if (mimeType === 'text/markdown' || mimeType === 'text/x-markdown') {
     return <IconMarkdown size={18} style={{ color: 'var(--color-teal)', flexShrink: 0 }} />;
+  }
+  if (mimeType === 'text/html') {
+    return <IconFileTypeHtml size={18} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />;
+  }
+  if (mimeType === 'text/plain') {
+    return <IconFileTypeTxt size={18} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />;
   }
   return <IconFile size={18} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />;
 }
@@ -135,7 +143,7 @@ function UploadZone({ onUpload }: { onUpload: (file: File) => void }) {
         ref={inputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.md,.txt"
+        accept=".pdf,.md,.txt,.html"
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) onUpload(file);
