@@ -130,7 +130,7 @@ export function ChatPanel({
 }: {
   session: ChatSession | null;
   onNewSession: () => void;
-  onSelectSession: (id: string) => void;
+  onSelectSession: (id: string | null) => void;
   onCitationClick?: (documentId: string, pageNumber: number | null) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
