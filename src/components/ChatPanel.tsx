@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { IconHistory, IconPlus, IconArrowUp, IconSend } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useChatSession, useChatStream, useSendChatMessage } from '@/hooks';
 import { SessionsModal } from './SessionsModal';
 import type { ChatSource, ChatSession } from '@/lib/api/types';
@@ -115,7 +117,69 @@ function AiBubble({
           color: 'var(--color-text)',
         }}
       >
-        <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{content}</div>
+        <div style={{ lineHeight: '1.6' }}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({ children }) => (
+                <h1 className="text-sm font-bold mb-1.5 mt-2" style={{ color: 'var(--color-text)' }}>{children}</h1>
+              ),
+              h2: ({ children }) => (
+                <h2 className="text-sm font-semibold mb-1.5 mt-2" style={{ color: 'var(--color-text)' }}>{children}</h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-xs font-semibold mb-1 mt-2" style={{ color: 'var(--color-text)' }}>{children}</h3>
+              ),
+              p: ({ children }) => (
+                <p className="mb-1.5 last:mb-0 text-xs leading-relaxed" style={{ color: 'var(--color-text)' }}>{children}</p>
+              ),
+              code: ({ children, className }) => {
+                const isBlock = className?.startsWith('language-');
+                return isBlock ? (
+                  <code
+                    className="block p-2 rounded text-[11px] overflow-x-auto mb-1.5"
+                    style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
+                  >
+                    {children}
+                  </code>
+                ) : (
+                  <code
+                    className="px-1 py-0.5 rounded text-[11px]"
+                    style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-teal)' }}
+                  >
+                    {children}
+                  </code>
+                );
+              },
+              blockquote: ({ children }) => (
+                <blockquote
+                  className="border-l-2 pl-2 my-1.5 text-xs italic"
+                  style={{ borderColor: 'var(--color-teal)', color: 'var(--color-text-mid)' }}
+                >
+                  {children}
+                </blockquote>
+              ),
+              ul: ({ children }) => <ul className="list-disc pl-4 mb-1.5 text-xs space-y-0.5">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal pl-4 mb-1.5 text-xs space-y-0.5">{children}</ol>,
+              li: ({ children }) => <li style={{ color: 'var(--color-text)' }}>{children}</li>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              em: ({ children }) => <em className="italic">{children}</em>,
+              a: ({ href, children }) => (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-teal)' }}
+                  className="underline"
+                >
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        </div>
         {sources && <SourceFooter sources={sources} onCitationClick={onCitationClick} />}
       </div>
     </div>
