@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { IconDatabase, IconBooks, IconSettings, IconUserCircle } from '@tabler/icons-react';
+import { IconDatabase, IconBooks, IconUserCircle } from '@tabler/icons-react';
 import { AccountModal } from './AccountModal';
 
 export function LeftRail() {
@@ -24,13 +24,6 @@ export function LeftRail() {
       </div>
 
       <div className="flex flex-col items-center gap-1 w-full px-2 mt-auto">
-        <button
-          title="Settings"
-          className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-secondary"
-          style={{ color: 'var(--color-text-light)' }}
-        >
-          <IconSettings size={18} />
-        </button>
         <button
           title="Account"
           onClick={() => setAccountOpen(true)}
