@@ -23,7 +23,7 @@ export function SessionsModal({
   activeSessionId: string | null;
   onSelect: (id: string) => void;
   onClose: () => void;
-  onActiveSessionDeleted: (id: string) => void;
+  onActiveSessionDeleted: (id: string | null) => void;
 }) {
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,13 +84,7 @@ export function SessionsModal({
       onSuccess: () => {
         if (session.id !== activeSessionId) return;
         const remaining = (sessions ?? []).filter((s) => s.id !== session.id);
-        if (remaining.length > 0) {
-          onActiveSessionDeleted(remaining[0].id);
-        } else {
-          createSession.mutate(undefined, {
-            onSuccess: (created) => onActiveSessionDeleted(created.id),
-          });
-        }
+        onActiveSessionDeleted(remaining.length > 0 ? remaining[0].id : null);
       },
     });
   }

@@ -30,13 +30,9 @@ export function App() {
 
     if (sessions.length > 0) {
       setActiveSessionId(sessions[0].id);
-    } else {
-      createSession.mutate(undefined, {
-        onSuccess: (session) => setActiveSessionId(session.id),
-      });
     }
     setInitialized(true);
-  }, [sessions, initialized, createSession]);
+  }, [sessions, initialized]);
 
   const activeSession: ChatSession | null =
     sessions?.find((s) => s.id === activeSessionId) ?? null;
