@@ -191,7 +191,7 @@ export function DocumentLibrary({
 
   return (
     <div
-      className="flex flex-col w-[248px] shrink-0 h-full border-r"
+      className="flex flex-col w-full h-full"
       style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
     >
       {/* Header */}

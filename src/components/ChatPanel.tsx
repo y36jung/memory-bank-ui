@@ -219,7 +219,7 @@ export function ChatPanel({
   const isInputDisabled = isStreamingActive || !session || isInitialHistoryLoad;
 
   return (
-    <div className="w-[340px] shrink-0 flex flex-col h-full relative" style={{ backgroundColor: 'var(--color-surface)' }}>
+    <div className="w-full flex flex-col h-full relative" style={{ backgroundColor: 'var(--color-surface)' }}>
       {showHistory && (
         <SessionsModal
           activeSessionId={session?.id ?? null}
