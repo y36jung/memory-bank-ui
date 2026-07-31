@@ -1,16 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { LeftRail } from './LeftRail';
-import { DocumentLibrary } from './DocumentLibrary';
-import { ChatPanel } from './ChatPanel';
+import { MainPanels } from './MainPanels';
 import { DemoBanner } from './DemoBanner';
-
-const DocumentViewer = dynamic(
-  () => import('./DocumentViewer').then((m) => ({ default: m.DocumentViewer })),
-  { ssr: false },
-);
 import { useCreateChatSession, useChatSessions, useDocuments } from '@/hooks';
 import type { ChatSession, Document } from '@/lib/api/types';
 
@@ -59,12 +52,10 @@ export function App() {
       <DemoBanner />
       <div className="flex flex-1 overflow-hidden">
         <LeftRail />
-        <DocumentLibrary
-          selectedDocId={selectedDoc?.id ?? null}
+        <MainPanels
+          selectedDoc={selectedDoc}
+          targetPage={targetPage}
           onSelectDoc={handleSelectDoc}
-        />
-        <DocumentViewer doc={selectedDoc} targetPage={targetPage ?? undefined} />
-        <ChatPanel
           session={activeSession}
           onNewSession={handleNewSession}
           onSelectSession={setActiveSessionId}

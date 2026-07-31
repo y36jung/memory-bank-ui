@@ -437,7 +437,7 @@ export function DocumentViewer({ doc, targetPage }: { doc: Doc | null; targetPag
   if (!doc) {
     return (
       <div
-        className="flex-1 flex flex-col items-center justify-center gap-2 h-full"
+        className="w-full flex flex-col items-center justify-center gap-2 h-full"
         style={{ backgroundColor: 'var(--color-bg)' }}
       >
         <IconFileDescription size={44} style={{ color: 'var(--color-text-light)' }} />
@@ -456,7 +456,7 @@ export function DocumentViewer({ doc, targetPage }: { doc: Doc | null; targetPag
 
   return (
     <div
-      className="flex-1 flex flex-col h-full border-r overflow-hidden"
+      className="w-full flex flex-col h-full overflow-hidden"
       style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
     >
       {/* Sticky header */}
