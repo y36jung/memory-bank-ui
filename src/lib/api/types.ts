@@ -60,6 +60,7 @@ export type ChatSessionDetail = ChatSession & {
 };
 
 export type ChatStreamEvent =
+  | { type: 'title'; title: string }
   | { type: 'delta'; content: string }
   | { type: 'done'; messageId: string; sources: ChatSource[] }
   | { type: 'error'; message: string };

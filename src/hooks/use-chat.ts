@@ -9,7 +9,7 @@ import {
   renameChatSession,
   streamChatMessage,
 } from '@/lib/api/chat';
-import type { ChatMessage, ChatSessionDetail, ChatSource } from '@/lib/api/types';
+import type { ChatMessage, ChatSession, ChatSessionDetail, ChatSource } from '@/lib/api/types';
 
 export function useChatSessions(search?: string) {
   return useQuery({
@@ -111,7 +111,15 @@ export function useSendChatMessage() {
 
       try {
         await streamChatMessage(sessionId, message, (event) => {
-          if (event.type === 'delta') {
+          if (event.type === 'title') {
+            queryClient.setQueriesData<ChatSession[]>(
+              { queryKey: ['chat', 'sessions'] },
+              (prev) => prev?.map((s) => (s.id === sessionId ? { ...s, title: event.title } : s)),
+            );
+            queryClient.setQueryData<ChatSessionDetail>(sessionKey(sessionId), (prev) =>
+              prev ? { ...prev, title: event.title } : prev,
+            );
+          } else if (event.type === 'delta') {
             queryClient.setQueryData<ChatStreamState>(streamKey(sessionId), (prev) => ({
               content: (prev?.content ?? '') + event.content,
               sources: prev?.sources ?? [],
