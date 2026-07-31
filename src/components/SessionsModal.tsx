@@ -44,6 +44,15 @@ export function SessionsModal({
     });
   }
 
+  function handleClose() {
+    const noSessionsExist = !search && sessions !== undefined && sessions.length === 0;
+    if (noSessionsExist) {
+      handleNew();
+    } else {
+      onClose();
+    }
+  }
+
   function startEditing(session: ChatSession) {
     setEditingId(session.id);
     setEditValue(session.title);
@@ -103,7 +112,7 @@ export function SessionsModal({
           Chat History
         </span>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           title="Close history"
           className="flex items-center justify-center w-7 h-7 rounded-md transition-colors hover:bg-secondary"
           style={{ color: 'var(--color-text-light)' }}
