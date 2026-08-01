@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { IconMailCheck } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { IconMailCheck, IconLoader2 } from '@tabler/icons-react';
 import { useLogin } from '@/hooks';
 import { ApiError } from '@/lib/api/client';
 import { BETA_MODE, DEMO_EMAIL, DEMO_PASSWORD, DEMO_LOGIN_ENABLED } from '@/lib/beta';
 import { AuthShell } from './AuthShell';
-import { SuccessPanel } from './SuccessPanel';
 import {
   CardHeader,
   Field,
@@ -25,6 +25,7 @@ interface FormErrors {
 }
 
 export function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
@@ -32,8 +33,25 @@ export function LoginForm() {
   const [resetSent, setResetSent] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [banner, setBanner] = useState<string | null>(null);
+  const [showEmailLogin, setShowEmailLogin] = useState(!DEMO_LOGIN_ENABLED);
 
   const login = useLogin();
+
+  useEffect(() => {
+    if (login.isSuccess) router.replace('/');
+  }, [login.isSuccess, router]);
+
+  function goToEmailLogin() {
+    setShowEmailLogin(true);
+    setErrors({});
+    setBanner(null);
+  }
+
+  function goToBetaAccess() {
+    setShowEmailLogin(false);
+    setErrors({});
+    setBanner(null);
+  }
 
   function handleForgot() {
     if (!email || !emailValid(email)) {
@@ -85,13 +103,61 @@ export function LoginForm() {
   if (login.isSuccess) {
     return (
       <AuthShell showFooter={false}>
-        <SuccessPanel title="Signed in" subtitle="Welcome back — taking you to your library." />
+        <div className="flex flex-col items-center justify-center gap-[10px] py-[8px]">
+          <IconLoader2 size={20} className="animate-auth-spin" style={{ color: 'var(--color-teal)' }} />
+          <div style={{ fontSize: 12, color: 'var(--color-text-light)' }}>Signing you in…</div>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  if (DEMO_LOGIN_ENABLED && !showEmailLogin) {
+    return (
+      <AuthShell>
+        <CardHeader title="Try Memory Bank" sub="Explore the private beta instantly" />
+
+        {banner && (
+          <div
+            className="rounded-[7px] px-[10px] py-[8px] mb-[14px] text-[11px] animate-fade-in-up"
+            style={{
+              backgroundColor: 'var(--color-amber-bg)',
+              border: '1px solid var(--color-pdf)',
+              color: 'var(--color-pdf)',
+            }}
+          >
+            {banner}
+          </div>
+        )}
+
+        <SubmitButton busy={login.isPending} busyLabel="Signing in…" onClick={handleDemoLogin}>
+          Continue with Beta Access
+        </SubmitButton>
+
+        <div style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--color-text-light)', marginTop: 16, lineHeight: 1.5 }}>
+          Memory Bank is in private beta — new account creation is invite-only.
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 10 }}>
+          <button type="button" onClick={goToEmailLogin} style={linkStyle}>
+            Have an invite? Sign in with email
+          </button>
+        </div>
       </AuthShell>
     );
   }
 
   return (
     <AuthShell>
+      {DEMO_LOGIN_ENABLED && (
+        <button
+          type="button"
+          onClick={goToBetaAccess}
+          style={{ ...linkStyle, display: 'block', marginBottom: 14 }}
+        >
+          ‹ Back to beta access
+        </button>
+      )}
+
       <CardHeader title="Welcome back" sub="Sign in to your workspace" />
 
       {resetSent && (
@@ -162,17 +228,7 @@ export function LoginForm() {
 
       {BETA_MODE ? (
         <div style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--color-text-light)', marginTop: 16, lineHeight: 1.5 }}>
-          Memory Bank is in private beta — new account creation is invite-only.{' '}
-          {DEMO_LOGIN_ENABLED && (
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              disabled={login.isPending}
-              style={{ ...linkStyle, fontSize: 'inherit', fontWeight: 500 }}
-            >
-              {login.isPending ? 'Signing in…' : 'Try demo account'}
-            </button>
-          )}
+          Memory Bank is in private beta — new account creation is invite-only.
         </div>
       ) : (
         <SwitchRow prompt="New to Memory Bank?" linkLabel="Create an account" href="/register" />
