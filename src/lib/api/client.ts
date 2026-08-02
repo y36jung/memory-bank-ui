@@ -1,4 +1,4 @@
-import { getAccessToken, refreshAccessToken } from './auth-store';
+import { getAccessToken, refreshAccessToken, attachDemoDeviceHeader, captureDemoDeviceId } from './auth-store';
 
 const BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
@@ -18,16 +18,16 @@ function withAuth(init?: RequestInit): RequestInit {
   const token = getAccessToken();
   const headers = new Headers(init?.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  // credentials: 'include' — required for the shared demo account's
-  // demo_device_id cookie (src/plugins/auth.ts in memory-bank-service) to
-  // round-trip on every protected route, not just /auth/refresh. Bearer-token
-  // auth alone doesn't need this, but without it the browser silently drops
-  // that cross-origin Set-Cookie and never sends it back.
+  attachDemoDeviceHeader(headers);
+  // credentials: 'include' — required for the refresh_token httpOnly
+  // cookie to round-trip on /auth/refresh. demo_device_id no longer uses a
+  // cookie (see attachDemoDeviceHeader/captureDemoDeviceId).
   return { ...init, headers, credentials: 'include' };
 }
 
 async function doFetch<T>(path: string, init: RequestInit | undefined, retried: boolean): Promise<T> {
   const res = await fetch(`${BASE}${path}`, withAuth(init));
+  captureDemoDeviceId(res);
 
   if (res.status === 401 && !retried && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();
@@ -48,6 +48,7 @@ export function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 async function doFetchBlob(path: string, init: RequestInit | undefined, retried: boolean): Promise<Blob> {
   const res = await fetch(`${BASE}${path}`, withAuth(init));
+  captureDemoDeviceId(res);
 
   if (res.status === 401 && !retried && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();
