@@ -1,4 +1,4 @@
-import type { User } from './types';
+import type { User, AuthResponse } from './types';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -9,7 +9,6 @@ export interface AuthState {
   isDemo: boolean;
 }
 
-const STORAGE_KEY = 'mb_auth_user';
 const BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
 let state: AuthState = { status: 'loading', user: null, accessToken: null, isDemo: false };
@@ -35,22 +34,6 @@ function decodeIsDemo(accessToken: string): boolean {
   }
 }
 
-function readCachedUser(): User | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeCachedUser(user: User | null) {
-  if (typeof window === 'undefined') return;
-  if (user) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  else window.localStorage.removeItem(STORAGE_KEY);
-}
-
 export function subscribeAuthState(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -65,13 +48,11 @@ export function getAccessToken(): string | null {
 }
 
 export function setAuthenticated(user: User, accessToken: string) {
-  writeCachedUser(user);
   state = { status: 'authenticated', user, accessToken, isDemo: decodeIsDemo(accessToken) };
   emit();
 }
 
 export function setUnauthenticated() {
-  writeCachedUser(null);
   state = { status: 'unauthenticated', user: null, accessToken: null, isDemo: false };
   emit();
 }
@@ -132,20 +113,14 @@ export async function refreshAccessToken(): Promise<string | null> {
         method: 'POST',
         credentials: 'include',
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.data?.accessToken) {
+      const json = (await res.json().catch(() => null)) as { data?: AuthResponse } | null;
+      if (!res.ok || !json?.data?.accessToken || !json?.data?.user) {
         setUnauthenticated();
         return null;
       }
-      const accessToken = json.data.accessToken as string;
-      const user = state.user ?? readCachedUser();
-      if (user) {
-        state = { status: 'authenticated', user, accessToken, isDemo: decodeIsDemo(accessToken) };
-        emit();
-      } else {
-        setUnauthenticated();
-        return null;
-      }
+      const { user, accessToken } = json.data;
+      state = { status: 'authenticated', user, accessToken, isDemo: decodeIsDemo(accessToken) };
+      emit();
       return accessToken;
     } catch {
       setUnauthenticated();
