@@ -1,5 +1,10 @@
 import { apiFetch, apiStreamUrl } from './client';
-import { getAccessToken, refreshAccessToken } from './auth-store';
+import {
+  getAccessToken,
+  refreshAccessToken,
+  attachDemoDeviceHeader,
+  captureDemoDeviceId,
+} from './auth-store';
 import type { ChatSession, ChatSessionDetail, ChatStreamEvent } from './types';
 
 export async function listChatSessions(search?: string): Promise<ChatSession[]> {
@@ -40,25 +45,30 @@ export async function streamChatMessage(
   const url = apiStreamUrl(`/chat/sessions/${sessionId}/messages`);
 
   function doStreamFetch() {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const headers = new Headers({ 'Content-Type': 'application/json' });
     const token = getAccessToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    attachDemoDeviceHeader(headers);
     return fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({ message }),
       signal,
-      // See client.ts's withAuth() — the demo account's demo_device_id
-      // cookie needs to round-trip on this route too.
+      // credentials: 'include' — still required for the refresh_token
+      // cookie; demo_device_id is now header-based (see attachDemoDeviceHeader).
       credentials: 'include',
     });
   }
 
   let res = await doStreamFetch();
+  captureDemoDeviceId(res);
 
   if (res.status === 401 && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();
-    if (newToken) res = await doStreamFetch();
+    if (newToken) {
+      res = await doStreamFetch();
+      captureDemoDeviceId(res);
+    }
   }
 
   if (!res.ok) {
