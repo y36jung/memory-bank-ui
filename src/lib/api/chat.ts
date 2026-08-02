@@ -48,6 +48,9 @@ export async function streamChatMessage(
       headers,
       body: JSON.stringify({ message }),
       signal,
+      // See client.ts's withAuth() — the demo account's demo_device_id
+      // cookie needs to round-trip on this route too.
+      credentials: 'include',
     });
   }
 

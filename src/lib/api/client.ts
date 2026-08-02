@@ -16,10 +16,14 @@ export class ApiError extends Error {
 
 function withAuth(init?: RequestInit): RequestInit {
   const token = getAccessToken();
-  if (!token) return init ?? {};
   const headers = new Headers(init?.headers);
-  headers.set('Authorization', `Bearer ${token}`);
-  return { ...init, headers };
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  // credentials: 'include' — required for the shared demo account's
+  // demo_device_id cookie (src/plugins/auth.ts in memory-bank-service) to
+  // round-trip on every protected route, not just /auth/refresh. Bearer-token
+  // auth alone doesn't need this, but without it the browser silently drops
+  // that cross-origin Set-Cookie and never sends it back.
+  return { ...init, headers, credentials: 'include' };
 }
 
 async function doFetch<T>(path: string, init: RequestInit | undefined, retried: boolean): Promise<T> {

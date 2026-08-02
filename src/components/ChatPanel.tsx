@@ -85,6 +85,23 @@ function SourceFooter({
   );
 }
 
+function ErrorBubble({ message }: { message: string }) {
+  return (
+    <div className="flex justify-start animate-fade-in-up">
+      <div
+        className="max-w-[95%] rounded-[7px] px-[10px] py-[8px] text-[11px]"
+        style={{
+          backgroundColor: 'var(--color-amber-bg)',
+          border: '1px solid var(--color-pdf)',
+          color: 'var(--color-pdf)',
+        }}
+      >
+        {message}
+      </div>
+    </div>
+  );
+}
+
 function UserBubble({ content }: { content: string }) {
   return (
     <div className="flex justify-end animate-fade-in-up">
@@ -205,7 +222,7 @@ export function ChatPanel({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const sessionIdRef = useRef<string | null>(null);
 
-  const { mutate: sendMessage } = useSendChatMessage();
+  const { mutate: sendMessage, error: sendMessageError, reset: resetSendMessageError } = useSendChatMessage();
 
   const activeSessionId = session?.id ?? null;
   const {
@@ -230,9 +247,10 @@ export function ChatPanel({
       sessionIdRef.current = session?.id ?? null;
       setMessages([]);
       setInput('');
+      resetSendMessageError();
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     }
-  }, [session?.id]);
+  }, [session?.id, resetSendMessageError]);
 
   // Sync messages from fetched history whenever it changes for the active
   // session. Never let it shrink what's already shown: a background refetch
@@ -261,9 +279,10 @@ export function ChatPanel({
 
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    resetSendMessageError();
 
     sendMessage({ sessionId: session.id, message: text });
-  }, [input, session, isStreamingActive, sendMessage]);
+  }, [input, session, isStreamingActive, sendMessage, resetSendMessageError]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -355,6 +374,10 @@ export function ChatPanel({
                 {isThinking && <ThinkingDots />}
                 {streamedContent && <AiBubble content={streamedContent} />}
               </>
+            )}
+
+            {!isStreamingActive && sendMessageError && (
+              <ErrorBubble message={sendMessageError.message} />
             )}
           </>
         )}

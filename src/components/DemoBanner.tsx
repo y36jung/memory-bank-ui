@@ -21,8 +21,9 @@ export function DemoBanner() {
     >
       <IconInfoCircle size={14} className="shrink-0" />
       <span className="flex-1">
-        You&apos;re using the shared public demo account — chats and documents here are visible to
-        other visitors and may be cleared at any time.
+        You&apos;re using the shared demo account — documents are shared with other visitors, but
+        your chats stay private to this browser and are cleared automatically after a period of
+        inactivity.
       </span>
       <button
         onClick={() => setDismissed(true)}
