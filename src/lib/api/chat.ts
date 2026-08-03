@@ -44,30 +44,34 @@ export async function streamChatMessage(
 ): Promise<void> {
   const url = apiStreamUrl(`/chat/sessions/${sessionId}/messages`);
 
-  function doStreamFetch() {
+  async function doStreamFetch() {
     const headers = new Headers({ 'Content-Type': 'application/json' });
     const token = getAccessToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
-    attachDemoDeviceHeader(headers);
-    return fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ message }),
-      signal,
-      // credentials: 'include' — still required for the refresh_token
-      // cookie; demo_device_id is now header-based (see attachDemoDeviceHeader).
-      credentials: 'include',
-    });
+    const release = await attachDemoDeviceHeader(headers);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ message }),
+        signal,
+        // credentials: 'include' — still required for the refresh_token
+        // cookie; demo_device_id is now header-based (see attachDemoDeviceHeader).
+        credentials: 'include',
+      });
+      captureDemoDeviceId(res);
+      return res;
+    } finally {
+      release();
+    }
   }
 
   let res = await doStreamFetch();
-  captureDemoDeviceId(res);
 
   if (res.status === 401 && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       res = await doStreamFetch();
-      captureDemoDeviceId(res);
     }
   }
 

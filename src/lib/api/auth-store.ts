@@ -62,6 +62,7 @@ const DEVICE_ID_STORAGE_KEY = 'mb_demo_device_id';
 
 let demoDeviceId: string | null = null;
 let deviceIdHydrated = false;
+let deviceIdBootstrap: Promise<void> | null = null;
 
 function readCachedDeviceId(): string | null {
   if (typeof window === 'undefined') return null;
@@ -85,12 +86,38 @@ function writeCachedDeviceId(id: string) {
 // header. Not a bearer credential (memory-bank-service's src/plugins/auth.ts
 // — it's a routing key, not a secret), so plain localStorage is fine, unlike
 // accessToken which is deliberately kept memory-only.
-export function attachDemoDeviceHeader(headers: Headers): void {
+//
+// The backend mints a fresh device id on *any* protected request that
+// arrives without one. If several first-load requests (sessions, documents,
+// ...) fired in parallel before this browser had hydrated an id, each would
+// get a *different* minted id, and whichever response was captured last
+// would silently win — orphaning whatever the others had just created. So
+// only the first concurrent caller's request goes out bare; everyone else
+// awaits it instead of racing their own. Callers MUST invoke the returned
+// release function, in a `finally`, once their request settles (success or
+// failure) — that's what unblocks the waiters.
+export async function attachDemoDeviceHeader(headers: Headers): Promise<() => void> {
   if (!deviceIdHydrated) {
     demoDeviceId = readCachedDeviceId();
     deviceIdHydrated = true;
   }
+
+  let release: () => void = () => {};
+  if (!demoDeviceId && state.isDemo) {
+    if (deviceIdBootstrap) {
+      await deviceIdBootstrap;
+    } else {
+      deviceIdBootstrap = new Promise<void>((resolve) => {
+        release = () => {
+          deviceIdBootstrap = null;
+          resolve();
+        };
+      });
+    }
+  }
+
   if (demoDeviceId) headers.set(DEMO_DEVICE_ID_HEADER, demoDeviceId);
+  return release;
 }
 
 // Reads a freshly-minted demo_device_id off an API response, if the backend

@@ -14,20 +14,25 @@ export class ApiError extends Error {
   }
 }
 
-function withAuth(init?: RequestInit): RequestInit {
+// credentials: 'include' — required for the refresh_token httpOnly cookie
+// to round-trip on /auth/refresh. demo_device_id no longer uses a cookie
+// (see attachDemoDeviceHeader/captureDemoDeviceId).
+async function fetchWithAuth(path: string, init?: RequestInit): Promise<Response> {
   const token = getAccessToken();
   const headers = new Headers(init?.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  attachDemoDeviceHeader(headers);
-  // credentials: 'include' — required for the refresh_token httpOnly
-  // cookie to round-trip on /auth/refresh. demo_device_id no longer uses a
-  // cookie (see attachDemoDeviceHeader/captureDemoDeviceId).
-  return { ...init, headers, credentials: 'include' };
+  const release = await attachDemoDeviceHeader(headers);
+  try {
+    const res = await fetch(`${BASE}${path}`, { ...init, headers, credentials: 'include' });
+    captureDemoDeviceId(res);
+    return res;
+  } finally {
+    release();
+  }
 }
 
 async function doFetch<T>(path: string, init: RequestInit | undefined, retried: boolean): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, withAuth(init));
-  captureDemoDeviceId(res);
+  const res = await fetchWithAuth(path, init);
 
   if (res.status === 401 && !retried && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();
@@ -47,8 +52,7 @@ export function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function doFetchBlob(path: string, init: RequestInit | undefined, retried: boolean): Promise<Blob> {
-  const res = await fetch(`${BASE}${path}`, withAuth(init));
-  captureDemoDeviceId(res);
+  const res = await fetchWithAuth(path, init);
 
   if (res.status === 401 && !retried && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();
