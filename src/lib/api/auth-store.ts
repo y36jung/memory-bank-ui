@@ -81,27 +81,25 @@ function writeCachedDeviceId(id: string) {
   }
 }
 
-// Attaches the previously-minted demo_device_id (if any) as a request
-// header. Not a bearer credential (memory-bank-service's src/plugins/auth.ts
-// — it's a routing key, not a secret), so plain localStorage is fine, unlike
+// Attaches the demo_device_id header, generating one on the spot if this
+// browser doesn't have one cached yet. Generated client-side — the backend
+// (memory-bank-service's src/plugins/auth.ts) is a pure consumer, it never
+// mints one — so it's decided synchronously, before any request goes out:
+// if useChatSessions() and useDocuments() both fire on mount, whichever
+// runs first sets demoDeviceId before the second one can even check it, so
+// both requests always end up with the same id. Not a bearer credential —
+// it's a routing key, not a secret — so plain localStorage is fine, unlike
 // accessToken which is deliberately kept memory-only.
 export function attachDemoDeviceHeader(headers: Headers): void {
   if (!deviceIdHydrated) {
     demoDeviceId = readCachedDeviceId();
     deviceIdHydrated = true;
   }
-  if (demoDeviceId) headers.set(DEMO_DEVICE_ID_HEADER, demoDeviceId);
-}
-
-// Reads a freshly-minted demo_device_id off an API response, if the backend
-// sent one (only happens on the first protected-route call for a browser
-// that doesn't have one yet, or after clearing storage).
-export function captureDemoDeviceId(res: Response): void {
-  const minted = res.headers.get(DEMO_DEVICE_ID_HEADER);
-  if (minted && minted !== demoDeviceId) {
-    demoDeviceId = minted;
-    writeCachedDeviceId(minted);
+  if (!demoDeviceId && state.isDemo) {
+    demoDeviceId = crypto.randomUUID();
+    writeCachedDeviceId(demoDeviceId);
   }
+  if (demoDeviceId) headers.set(DEMO_DEVICE_ID_HEADER, demoDeviceId);
 }
 
 export async function refreshAccessToken(): Promise<string | null> {

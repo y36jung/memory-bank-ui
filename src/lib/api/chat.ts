@@ -1,10 +1,5 @@
 import { apiFetch, apiStreamUrl } from './client';
-import {
-  getAccessToken,
-  refreshAccessToken,
-  attachDemoDeviceHeader,
-  captureDemoDeviceId,
-} from './auth-store';
+import { getAccessToken, refreshAccessToken, attachDemoDeviceHeader } from './auth-store';
 import type { ChatSession, ChatSessionDetail, ChatStreamEvent } from './types';
 
 export async function listChatSessions(search?: string): Promise<ChatSession[]> {
@@ -61,13 +56,11 @@ export async function streamChatMessage(
   }
 
   let res = await doStreamFetch();
-  captureDemoDeviceId(res);
 
   if (res.status === 401 && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       res = await doStreamFetch();
-      captureDemoDeviceId(res);
     }
   }
 
