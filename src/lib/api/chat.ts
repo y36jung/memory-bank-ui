@@ -1,10 +1,5 @@
 import { apiFetch, apiStreamUrl } from './client';
-import {
-  getAccessToken,
-  refreshAccessToken,
-  attachDemoDeviceHeader,
-  captureDemoDeviceId,
-} from './auth-store';
+import { getAccessToken, refreshAccessToken, attachDemoDeviceHeader } from './auth-store';
 import type { ChatSession, ChatSessionDetail, ChatStreamEvent } from './types';
 
 export async function listChatSessions(search?: string): Promise<ChatSession[]> {
@@ -44,26 +39,20 @@ export async function streamChatMessage(
 ): Promise<void> {
   const url = apiStreamUrl(`/chat/sessions/${sessionId}/messages`);
 
-  async function doStreamFetch() {
+  function doStreamFetch() {
     const headers = new Headers({ 'Content-Type': 'application/json' });
     const token = getAccessToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
-    const release = await attachDemoDeviceHeader(headers);
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ message }),
-        signal,
-        // credentials: 'include' — still required for the refresh_token
-        // cookie; demo_device_id is now header-based (see attachDemoDeviceHeader).
-        credentials: 'include',
-      });
-      captureDemoDeviceId(res);
-      return res;
-    } finally {
-      release();
-    }
+    attachDemoDeviceHeader(headers);
+    return fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ message }),
+      signal,
+      // credentials: 'include' — still required for the refresh_token
+      // cookie; demo_device_id is now header-based (see attachDemoDeviceHeader).
+      credentials: 'include',
+    });
   }
 
   let res = await doStreamFetch();

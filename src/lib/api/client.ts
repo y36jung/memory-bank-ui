@@ -1,4 +1,4 @@
-import { getAccessToken, refreshAccessToken, attachDemoDeviceHeader, captureDemoDeviceId } from './auth-store';
+import { getAccessToken, refreshAccessToken, attachDemoDeviceHeader } from './auth-store';
 
 const BASE = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
@@ -14,25 +14,19 @@ export class ApiError extends Error {
   }
 }
 
-// credentials: 'include' — required for the refresh_token httpOnly cookie
-// to round-trip on /auth/refresh. demo_device_id no longer uses a cookie
-// (see attachDemoDeviceHeader/captureDemoDeviceId).
-async function fetchWithAuth(path: string, init?: RequestInit): Promise<Response> {
+function withAuth(init?: RequestInit): RequestInit {
   const token = getAccessToken();
   const headers = new Headers(init?.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  const release = await attachDemoDeviceHeader(headers);
-  try {
-    const res = await fetch(`${BASE}${path}`, { ...init, headers, credentials: 'include' });
-    captureDemoDeviceId(res);
-    return res;
-  } finally {
-    release();
-  }
+  attachDemoDeviceHeader(headers);
+  // credentials: 'include' — required for the refresh_token httpOnly
+  // cookie to round-trip on /auth/refresh. demo_device_id no longer uses a
+  // cookie (see attachDemoDeviceHeader).
+  return { ...init, headers, credentials: 'include' };
 }
 
 async function doFetch<T>(path: string, init: RequestInit | undefined, retried: boolean): Promise<T> {
-  const res = await fetchWithAuth(path, init);
+  const res = await fetch(`${BASE}${path}`, withAuth(init));
 
   if (res.status === 401 && !retried && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();
@@ -52,7 +46,7 @@ export function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function doFetchBlob(path: string, init: RequestInit | undefined, retried: boolean): Promise<Blob> {
-  const res = await fetchWithAuth(path, init);
+  const res = await fetch(`${BASE}${path}`, withAuth(init));
 
   if (res.status === 401 && !retried && getAccessToken() !== null) {
     const newToken = await refreshAccessToken();

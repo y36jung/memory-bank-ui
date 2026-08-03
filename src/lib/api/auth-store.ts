@@ -62,7 +62,6 @@ const DEVICE_ID_STORAGE_KEY = 'mb_demo_device_id';
 
 let demoDeviceId: string | null = null;
 let deviceIdHydrated = false;
-let deviceIdBootstrap: Promise<void> | null = null;
 
 function readCachedDeviceId(): string | null {
   if (typeof window === 'undefined') return null;
@@ -82,53 +81,25 @@ function writeCachedDeviceId(id: string) {
   }
 }
 
-// Attaches the previously-minted demo_device_id (if any) as a request
-// header. Not a bearer credential (memory-bank-service's src/plugins/auth.ts
-// — it's a routing key, not a secret), so plain localStorage is fine, unlike
+// Attaches the demo_device_id header, generating one on the spot if this
+// browser doesn't have one cached yet. Generated client-side — the backend
+// (memory-bank-service's src/plugins/auth.ts) is a pure consumer, it never
+// mints one — so it's decided synchronously, before any request goes out:
+// if useChatSessions() and useDocuments() both fire on mount, whichever
+// runs first sets demoDeviceId before the second one can even check it, so
+// both requests always end up with the same id. Not a bearer credential —
+// it's a routing key, not a secret — so plain localStorage is fine, unlike
 // accessToken which is deliberately kept memory-only.
-//
-// The backend mints a fresh device id on *any* protected request that
-// arrives without one. If several first-load requests (sessions, documents,
-// ...) fired in parallel before this browser had hydrated an id, each would
-// get a *different* minted id, and whichever response was captured last
-// would silently win — orphaning whatever the others had just created. So
-// only the first concurrent caller's request goes out bare; everyone else
-// awaits it instead of racing their own. Callers MUST invoke the returned
-// release function, in a `finally`, once their request settles (success or
-// failure) — that's what unblocks the waiters.
-export async function attachDemoDeviceHeader(headers: Headers): Promise<() => void> {
+export function attachDemoDeviceHeader(headers: Headers): void {
   if (!deviceIdHydrated) {
     demoDeviceId = readCachedDeviceId();
     deviceIdHydrated = true;
   }
-
-  let release: () => void = () => {};
   if (!demoDeviceId && state.isDemo) {
-    if (deviceIdBootstrap) {
-      await deviceIdBootstrap;
-    } else {
-      deviceIdBootstrap = new Promise<void>((resolve) => {
-        release = () => {
-          deviceIdBootstrap = null;
-          resolve();
-        };
-      });
-    }
+    demoDeviceId = crypto.randomUUID();
+    writeCachedDeviceId(demoDeviceId);
   }
-
   if (demoDeviceId) headers.set(DEMO_DEVICE_ID_HEADER, demoDeviceId);
-  return release;
-}
-
-// Reads a freshly-minted demo_device_id off an API response, if the backend
-// sent one (only happens on the first protected-route call for a browser
-// that doesn't have one yet, or after clearing storage).
-export function captureDemoDeviceId(res: Response): void {
-  const minted = res.headers.get(DEMO_DEVICE_ID_HEADER);
-  if (minted && minted !== demoDeviceId) {
-    demoDeviceId = minted;
-    writeCachedDeviceId(minted);
-  }
 }
 
 export async function refreshAccessToken(): Promise<string | null> {
