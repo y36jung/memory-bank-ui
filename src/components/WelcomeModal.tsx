@@ -7,6 +7,7 @@ import {
   IconLock,
   IconArrowUp,
   IconHistory,
+  IconInfoCircle,
 } from '@tabler/icons-react';
 import { useIsDemoAccount } from '@/hooks';
 import { BETA_MODE } from '@/lib/beta';
@@ -104,6 +105,9 @@ export function WelcomeModal({ onClose }: { onClose: () => void }) {
           </GuideRow>
           <GuideRow icon={<IconHistory size={14} />}>
             Revisit past conversations anytime from your chat history.
+          </GuideRow>
+          <GuideRow icon={<IconInfoCircle size={14} />}>
+            This is just a personal project built for learning purposes.
           </GuideRow>
         </div>
 
