@@ -86,7 +86,7 @@ export function RegisterForm() {
 
   if (register.isSuccess) {
     return (
-      <AuthShell showFooter={false}>
+      <AuthShell>
         <SuccessPanel title="Account created" subtitle="Your workspace is ready to go." />
       </AuthShell>
     );

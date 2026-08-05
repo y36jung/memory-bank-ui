@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { IconDatabase, IconBooks, IconUserCircle, IconHelpCircle } from '@tabler/icons-react';
+import {
+  IconDatabase,
+  IconBooks,
+  IconUserCircle,
+  IconHelpCircle,
+  IconBrandGithub,
+  IconBrandLinkedin,
+} from '@tabler/icons-react';
 import { AccountModal } from './AccountModal';
 import { WelcomeModal } from './WelcomeModal';
 import {
@@ -10,6 +17,9 @@ import {
   markWelcomeGuideSeen,
   subscribeWelcomeGuideSeen,
 } from '@/lib/welcome-guide';
+
+const GITHUB_URL = 'https://github.com/y36jung/memory-bank-service';
+const LINKEDIN_URL = 'https://www.linkedin.com/in/y36jung';
 
 export function LeftRail() {
   const [accountOpen, setAccountOpen] = useState(false);
@@ -46,6 +56,26 @@ export function LeftRail() {
       </div>
 
       <div className="flex flex-col items-center gap-1 w-full px-2 mt-auto">
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View source on GitHub — a personal project built for learning purposes"
+          className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-secondary"
+          style={{ color: 'var(--color-text-light)' }}
+        >
+          <IconBrandGithub size={18} />
+        </a>
+        <a
+          href={LINKEDIN_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Connect on LinkedIn"
+          className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-secondary"
+          style={{ color: 'var(--color-text-light)' }}
+        >
+          <IconBrandLinkedin size={18} />
+        </a>
         <button
           title="Guide"
           onClick={() => setGuideOpen(true)}

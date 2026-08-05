@@ -2,10 +2,8 @@ import { IconDatabase } from '@tabler/icons-react';
 import { BETA_MODE } from '@/lib/beta';
 
 export function AuthShell({
-  showFooter = true,
   children,
 }: {
-  showFooter?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -43,19 +41,6 @@ export function AuthShell({
       >
         {children}
       </div>
-
-      {showFooter && (
-        <div style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--color-text-light)', marginTop: 18 }}>
-          By continuing you agree to our{' '}
-          <a href="#" style={{ color: 'var(--color-text-mid)', textDecoration: 'none' }}>
-            Terms
-          </a>{' '}
-          and{' '}
-          <a href="#" style={{ color: 'var(--color-text-mid)', textDecoration: 'none' }}>
-            Privacy Policy
-          </a>
-        </div>
-      )}
     </div>
   );
 }

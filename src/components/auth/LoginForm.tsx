@@ -102,7 +102,7 @@ export function LoginForm() {
 
   if (login.isSuccess) {
     return (
-      <AuthShell showFooter={false}>
+      <AuthShell>
         <div className="flex flex-col items-center justify-center gap-[10px] py-[8px]">
           <IconLoader2 size={20} className="animate-auth-spin" style={{ color: 'var(--color-teal)' }} />
           <div style={{ fontSize: 12, color: 'var(--color-text-light)' }}>Signing you in…</div>
